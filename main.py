@@ -1,36 +1,13 @@
-from img_filter_gui import Ui_MainWindow
 import sys
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
-from matplotlib.figure import Figure
-import sys
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from PyQt5 import QtCore, QtGui, QtWidgets, uic
-from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QTableWidgetItem
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel
-from PyQt5.QtGui import QIcon, QPixmap
-from PyQt5.QtGui import QPixmap, QImage
-from PyQt5.QtWidgets import *
-from PyQt5.QtGui import *
-from PyQt5.QtCore import *
-import numpy as np
-from PIL import Image as im
-from PyQt5 import QtGui
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QFileDialog, QLabel, QTextEdit
-import sys
-from PyQt5.QtGui import QPixmap
-
 import cv2
 import numpy as np
-from matplotlib import pyplot as plt
-from skimage.color import rgb2gray
 import qdarkstyle
+from PyQt5 import QtWidgets, uic
+from PyQt5.QtWidgets import QFileDialog
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
 
 
-# class GUI (Ui_MainWindow):
-#     def setup(self,MainWindow):
-#         super().setupUi(MainWindow)
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
@@ -141,17 +118,19 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.Histogram()
 
-                 ################ HISTOGRAM EQUALIZATION ################################
+                ############################ HISTOGRAM EQUALIZATION ################################
     def Histogram(self):
-
+        # if RGB scale is chosen from comboBox
         if self.comboBox_Hist_Scale.currentText() == 'RGB Scale':
             self.axes_Orig_image.imshow(self.img_rgb)  ##original image in the histogram tab
 
+            # Transform into HSV color space, Calculate its Histogram and CDF, then plot both. #
             img_hsv = cv2.cvtColor(self.img_rgb, cv2.COLOR_RGB2HSV)
-            hist_gray, bins_gray = np.histogram(img_hsv[:, :, 2], 256, [0, 255])
+            hist_gray, bins_gray = np.histogram(img_hsv[:, :, 2], 256, [0, 255]) # Histogram of V channel in 256 bins from 0 to 255
             cdf = hist_gray.cumsum()
-            cdf_normalized = cdf * float(hist_gray.max()) / cdf.max()
+            cdf_normalized = cdf * float(hist_gray.max()) / cdf.max() #Calculate cdf using cumsum() then normailize it.
 
+            # Plotting Histogram and CDF of the original RGB image #
             self.axes_Orig_Hist.clear()
             self.axes_Orig_Hist.hist(img_hsv[:, :, 2].flatten(), bins=bins_gray)
             self.axes_Orig_Hist.plot(cdf_normalized, color='r')
@@ -161,16 +140,20 @@ class MainWindow(QtWidgets.QMainWindow):
             self.axes_Orig_Hist.axes.set_title("Histogram")
             self.axes_Orig_Hist.axes.title.set_color('white')
 
+            # Equalization Steps #
+            # These steps are based on
+            # https://en.wikipedia.org/wiki/Histogram_equalization#:~:text=general%20histogram%20equalization
             equalize = (cdf - cdf.min()) * 255 / ((self.img.shape[0] * self.img.shape[1]) - cdf.min())
             equalizedImage = img_hsv
-            equalizedImage[:, :, 2] = equalize[img_hsv[:, :, 2]]
+            equalizedImage[:, :, 2] = equalize[img_hsv[:, :, 2]] # Do all processing on v channel
+            img_output = cv2.cvtColor(equalizedImage, cv2.COLOR_HSV2RGB) # Transform back to RGB color space
 
-            img_output = cv2.cvtColor(equalizedImage, cv2.COLOR_HSV2RGB)
-
+            # Calculate histogram and CDF of equalized image #
             hist_gray_equalized, bins_gray = np.histogram(equalizedImage[:, :, 2], 256, [0, 255])
             cdf_equalized = hist_gray_equalized.cumsum()
             cdf_normalized_equalized = cdf_equalized * float(hist_gray_equalized.max()) / cdf_equalized.max()
 
+            # Plot equalized image and its histogram and CDF #
             self.axes_Filt_image.imshow(img_output)
             self.axes_Filt_Hist.clear()
             self.axes_Filt_Hist.hist(equalizedImage[:, :, 2].flatten(), bins=bins_gray)
@@ -181,12 +164,17 @@ class MainWindow(QtWidgets.QMainWindow):
             self.axes_Filt_Hist.axes.set_title("Histogram")
             self.axes_Filt_Hist.axes.title.set_color('white')
 
+            # If " Gray Scale " is chosen from ComboBox
+            # Do the previous steps but on gray scale image which consists of 1 channel " linear data "
         elif self.comboBox_Hist_Scale.currentText() == 'Gray Scale':
             self.axes_Orig_image.imshow(self.img, cmap='gray')  ##original image in the histogram tab
+
+            # Calculate histogram and CDF of original gray image #
             hist_gray, bins_gray = np.histogram(self.img.flatten(), 256, [0, 255])
             cdf = hist_gray.cumsum()
             cdf_normalized = cdf * float(hist_gray.max()) / cdf.max()
 
+            # Plot histogram and CDF of original gray image #
             self.axes_Orig_Hist.clear()
             self.axes_Orig_Hist.hist(self.img.flatten(), bins=bins_gray)
             self.axes_Orig_Hist.plot(cdf_normalized, color='r')
@@ -196,13 +184,17 @@ class MainWindow(QtWidgets.QMainWindow):
             self.axes_Orig_Hist.axes.set_title("Histogram")
             self.axes_Orig_Hist.axes.title.set_color('white')
 
+            # Equalization steps #
+            # same as above but for this image , it consists of only 1 channel so it's just a 1-D array #
             equalize = (cdf - cdf.min()) * 255 / ((self.img.shape[0] * self.img.shape[1]) - cdf.min())
             equalizedImage = equalize[self.img]
 
+            # Calculate equalized iamge histogram and CDF #
             hist_gray_equalized, bins_gray = np.histogram(equalizedImage.flatten(), 256, [0, 255])
             cdf_equalized = hist_gray_equalized.cumsum()
             cdf_normalized_equalized = cdf_equalized * float(hist_gray_equalized.max()) / cdf_equalized.max()
 
+            # Plot Equalized image and its histogram and CDF #
             self.axes_Filt_image.imshow(equalizedImage, cmap='gray')
             self.axes_Filt_Hist.clear()
             self.axes_Filt_Hist.hist(equalizedImage.flatten(), bins=bins_gray)
@@ -488,22 +480,3 @@ app = QtWidgets.QApplication(sys.argv)
 app.setStyleSheet(qdarkstyle.load_stylesheet())
 window = MainWindow()
 app.exec_()
-
-# class application(QtWidgets.QMainWindow):
-#     def __init__(self):
-#         super().__init__()
-#         self.gui=GUI()
-#         self.gui.setup(self)
-
-
-# def window():
-#     app = QApplication(sys.argv)
-#     app.setStyleSheet(qdarkstyle.load_stylesheet())
-#     win = application()
-#     win.show()
-#     sys.exit(app.exec_())
-
-
-# # main code
-# if __name__ == "__main__":
-#     window()
