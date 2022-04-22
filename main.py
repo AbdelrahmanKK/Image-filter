@@ -21,8 +21,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.comboBox_filters.addItem("Low Pass Freq")
         self.comboBox_filters.addItem("Median")
         self.comboBox_filters.addItem("Laplace")
-        self.comboBox_color_filters.addItem("Gray Scale Mode")
         self.comboBox_color_filters.addItem("RGB Scale Mode")
+        self.comboBox_color_filters.addItem("Gray Scale Mode")
 
         self.figure_Orig_Spat = Figure(figsize=(3, 3), dpi=100)
         self.axes_Orig_Spat = self.figure_Orig_Spat.add_subplot()
